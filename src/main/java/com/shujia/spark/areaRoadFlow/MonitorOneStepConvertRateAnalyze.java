@@ -216,6 +216,7 @@ public class MonitorOneStepConvertRateAnalyze {
 				while(iterator.hasNext()){
 					Row row = iterator.next();
 					rows.add(row);
+
 				}
 				
 				/**
@@ -225,6 +226,8 @@ public class MonitorOneStepConvertRateAnalyze {
 
 					@Override
 					public int compare(Row row1, Row row2) {
+						System.out.println(row1);
+						System.out.println(row2);
 						 String actionTime1 = row1.getString(4);
 						 String actionTime2 = row2.getString(4);
 						 if(DateUtils.after(actionTime1, actionTime2)){

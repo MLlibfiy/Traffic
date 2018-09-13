@@ -28,7 +28,7 @@ public class SparkUtils {
 	public static void setMaster(SparkConf conf) {
 		boolean local = ConfigurationManager.getBoolean(Constants.SPARK_LOCAL);
 		if(local) {
-			conf.setMaster("local");  
+			conf.setMaster("local[3]");
 		}
 	}
 	
@@ -41,7 +41,7 @@ public class SparkUtils {
 	public static SQLContext getSQLContext(JavaSparkContext sc) {
 		boolean local = ConfigurationManager.getBoolean(Constants.SPARK_LOCAL);
 		if(local) {
-			return new HiveContext(sc);
+			return new SQLContext(sc);
 		} else {
 			return new HiveContext(sc);
 		}
@@ -85,7 +85,7 @@ public class SparkUtils {
 		 * repartition可以提高stage的并行度
 		 */
 //		return actionDF.javaRDD().repartition(1000);
-		return monitorDF.javaRDD();   
+		return monitorDF.javaRDD();
 	}
 
 	public static JavaRDD<Row> getCameraRDDByDateRangeAndCars(SQLContext sqlContext, JSONObject taskParamsJsonObject) {

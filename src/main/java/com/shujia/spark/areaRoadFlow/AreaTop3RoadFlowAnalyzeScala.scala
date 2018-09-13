@@ -8,7 +8,6 @@ import com.shujia.spark.dao.factory.DAOFactory
 import com.shujia.spark.util.{ParamUtils, SparkUtils, SparkUtilsScala}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.RowFactory
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.types.DataTypes
 import org.apache.spark.sql.types.StructField
@@ -36,11 +35,17 @@ import org.apache.spark.rdd.RDD
   */
 object AreaTop3RoadFlowAnalyzeScala {
   def main(args: Array[String]): Unit = { // 创建SparkConf
+
     val conf = new SparkConf().setAppName("AreaTop3ProductSpark")
-    SparkUtils.setMaster(conf)
+
+    SparkUtilsScala.setMaster(conf)
+
     // 构建Spark上下文
     val sc = new SparkContext(conf)
+
+    //hiveContext
     val sqlContext = SparkUtilsScala.getSQLContext(sc)
+
     //				sqlContext.setConf("spark.sql.shuffle.partitions", "1000");
     //				sqlContext.setConf("spark.sql.autoBroadcastJoinThreshold", "20971520");
     // 注册自定义函数
@@ -48,17 +53,26 @@ object AreaTop3RoadFlowAnalyzeScala {
     sqlContext.udf.register("random_prefix", new RandomPrefixUDF, DataTypes.StringType)
     sqlContext.udf.register("remove_random_prefix", new RemoveRandomPrefixUDF, DataTypes.StringType)
     sqlContext.udf.register("group_concat_distinct", new GroupConcatDistinctUDAF)
-    // 准备模拟数据
-    SparkUtils.mockData(sc, sqlContext)
+
+
+    // 准备模拟数据  注册两张临时表 表：monitor_flow_action  表：monitor_camera_info
+    SparkUtilsScala.mockData(sc, sqlContext)
+
     // 获取命令行传入的taskid，查询对应的任务参数
     val taskDAO = DAOFactory.getTaskDAO
+    //taskID = 4
     val taskid = ParamUtils.getTaskIdFromArgs(args, Constants.SPARK_LOCAL_TASKID_TOPN_MONITOR_FLOW)
+
     val task = taskDAO.findTaskById(taskid)
+
+
     if (task == null) return
-    System.out.println(task.getTaskParams)
+    println(task.getTaskParams)
     val taskParam = JSON.parseObject(task.getTaskParams)
+    //    taskParam.getString("startDate")
     /**
       * 获取指定日期内的参数
+      * 根据task 里面的参数过滤数据
       * monitor_id  car   road_id	area_id
       */
     val areaId2DetailInfos = getInfosByDateRDD(sqlContext, taskParam)
@@ -101,7 +115,28 @@ object AreaTop3RoadFlowAnalyzeScala {
       * car_count
       * monitor_infos
       */
-    val sql = "" + "SELECT " + "area_id," + "road_id," + "car_count," + "monitor_infos, " + "CASE " + "WHEN car_count > 170 THEN 'A LEVEL' " + "WHEN car_count > 160 AND car_count <= 170 THEN 'B LEVEL' " + "WHEN car_count > 150 AND car_count <= 160 THEN 'C LEVEL' " + "ELSE 'D LEVEL' " + "END flow_level " + "FROM (" + "SELECT " + "area_id," + "road_id," + "car_count," + "monitor_infos," + "row_number() OVER (PARTITION BY area_id ORDER BY car_count DESC) rn " + "FROM tmp_area_road_flow_count " + ") tmp " + "WHERE rn <=3"
+    val sql =
+      "SELECT " +
+        "area_id," +
+        "road_id," +
+        "car_count," +
+        "monitor_infos, " +
+        "CASE " +
+        "WHEN car_count > 170 THEN 'A LEVEL' " +
+        "WHEN car_count > 160 AND car_count <= 170 THEN 'B LEVEL' " +
+        "WHEN car_count > 150 AND car_count <= 160 THEN 'C LEVEL' " +
+        "ELSE 'D LEVEL' " +
+        "END flow_level " +
+        "FROM (" +
+        "SELECT " +
+        "area_id," +
+        "road_id," +
+        "car_count," +
+        "monitor_infos," +
+        "row_number() OVER (PARTITION BY area_id ORDER BY car_count DESC) rn " +
+        "FROM tmp_area_road_flow_count " +
+        ") tmp " +
+        "WHERE rn <=3"
     val df = sqlContext.sql(sql)
     df.show()
     df.rdd
@@ -115,10 +150,58 @@ object AreaTop3RoadFlowAnalyzeScala {
       *structFields.add(DataTypes.createStructField("monitor_id", DataTypes.StringType, true));
       *structFields.add(DataTypes.createStructField("car", DataTypes.StringType, true));
       */
-    val sql = "SELECT " + "area_id," + "road_id," + "count(*) car_count," + "group_concat_distinct(monitor_id) monitor_infos " + "FROM tmp_car_flow_basic " + "GROUP BY area_id,road_id"
-    val sqlText = "" + "SELECT " + "area_name_road_id," + "sum(car_count)," + "group_concat_distinct(monitor_infos) monitor_infoss " + "FROM (" + "SELECT " + "remove_random_prefix(area_name_road_id) area_name_road_id," + "car_count," + "monitor_infos " + "FROM (" + "SELECT " + "area_name_road_id," + "count(*) car_count," + "group_concat_distinct(monitor_id) monitor_infos " + "FROM (" + "SELECT " + "monitor_id," + "car," + "random_prefix(concat_String_string(area_name,road_id,':'),10) area_name_road_id " + "FROM tmp_car_flow_basic " + ") t1 " + "GROUP BY area_name_road_id " + ") t2 " + ") t3 " + "GROUP BY area_name_road_id"
+
+    /*
+tmp_car_flow_basic表结构
++-------+---------+-------+----------+-------+
+|area_id|area_name|road_id|monitor_id|    car|
++-------+---------+-------+----------+-------+
+|     06|      东城区|     25|      0004|沪G42607|
+|     06|      东城区|      2|      0006|沪G42607|
+|     06|      东城区|      2|      0005|沪G42607|
+|     06|      东城区|     15|      0000|沪G42607|
+|     06|      东城区|     33|      0000|沪G42607|
+
+     */
+
+    val sql =
+    "SELECT " +
+      "area_id," +
+      "road_id," +
+      "count(*) car_count," +
+      "group_concat_distinct(monitor_id) monitor_infos " +
+      "FROM tmp_car_flow_basic " +
+      "GROUP BY area_id,road_id"
+    val sqlText = "" +
+      "SELECT " +
+      "area_name_road_id," +
+      "sum(car_count)," +
+      "group_concat_distinct(monitor_infos) monitor_infoss " +
+      "FROM (" +
+      "SELECT " +
+      "remove_random_prefix(area_name_road_id) area_name_road_id," +
+      "car_count," +
+      "monitor_infos " +
+      "FROM (" +
+      "SELECT " +
+      "area_name_road_id," +
+      "count(*) car_count," +
+      "group_concat_distinct(monitor_id) monitor_infos " +
+      "FROM (" +
+      "SELECT " +
+      "monitor_id," +
+      "car," +
+      "random_prefix(concat_String_string(area_name,road_id,':'),10) area_name_road_id " +
+      "FROM tmp_car_flow_basic " +
+      ") t1 " +
+      "GROUP BY area_name_road_id " +
+      ") t2 " +
+      ") t3 " +
+      "GROUP BY area_name_road_id"
+    //    sqlContext.sql(sqlText).show()
+
     val df = sqlContext.sql(sql)
-    //		df.show();
+    df.show()
     df.registerTempTable("tmp_area_road_flow_count")
   }
 
@@ -131,7 +214,7 @@ object AreaTop3RoadFlowAnalyzeScala {
       val car = carFlowDetailRow.getString(1)
       val roadId = carFlowDetailRow.getString(2)
       val areaName = areaDetailRow.getString(1)
-      RowFactory.create(areaId, areaName, roadId, monitorId, car)
+      Row(areaId, areaName, roadId, monitorId, car)
     })
     val structFields = new util.ArrayList[StructField]
     structFields.add(DataTypes.createStructField("area_id", DataTypes.StringType, true))
@@ -144,7 +227,7 @@ object AreaTop3RoadFlowAnalyzeScala {
     df.registerTempTable("tmp_car_flow_basic")
   }
 
-  private def getAreaId2AreaInfoRDD(sqlContext: SQLContext) = {
+  def getAreaId2AreaInfoRDD(sqlContext: SQLContext): RDD[(String, Row)] = {
     var url = ""
     var user = ""
     var password = ""
@@ -175,11 +258,22 @@ object AreaTop3RoadFlowAnalyzeScala {
     areaid2areaInfoRDD
   }
 
-  private def getInfosByDateRDD(sqlContext: SQLContext, taskParam: JSONObject): RDD[(String, Row)] = {
+  def getInfosByDateRDD(sqlContext: SQLContext, taskParam: JSONObject): RDD[(String, Row)] = {
+
     val startDate = ParamUtils.getParam(taskParam, Constants.PARAM_START_DATE)
     val endDate = ParamUtils.getParam(taskParam, Constants.PARAM_END_DATE)
-    val sql = "SELECT " + "monitor_id," + "car," + "road_id," + "area_id " + "FROM	monitor_flow_action " + "WHERE date >= '" + startDate + "'" + "AND date <= '" + endDate + "'"
+
+    val sql = "SELECT " +
+      "monitor_id," +
+      "car," +
+      "road_id," +
+      "area_id " +
+      "FROM	monitor_flow_action " +
+      "WHERE date >= '" + startDate + "'" +
+      "AND date <= '" + endDate + "'"
+
     val df = sqlContext.sql(sql)
+
     df.rdd.map(row => {
       val areaId = row.getString(3)
       (areaId, row)

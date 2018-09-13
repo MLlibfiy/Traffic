@@ -23,6 +23,8 @@ import com.shujia.spark.util.DateUtils;
 import com.shujia.spark.util.ParamUtils;
 import com.shujia.spark.util.SparkUtils;
 import com.shujia.spark.util.StringUtils;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -106,8 +108,7 @@ public class RandomExtractCars {
 				/**
   				 * 随机抽取N个车辆信息，比如一天有24个小时，其中08:00~09:00的车辆数量占当天总车流量的50%，在这天中我们需要随机抽取100个，
   				 * 那么08:00~09:00的用户，就得抽取100*50%=50，而且这50个需要随机抽取。
-  				 * 我
-  				 * 们需要使用Spark自己实现一个算法，按照时间段分段抽取车辆信息，然后这些车辆信息可以很权威的代表整个城市的车辆信息，
+  				 * 我们需要使用Spark自己实现一个算法，按照时间段分段抽取车辆信息，然后这些车辆信息可以很权威的代表整个城市的车辆信息，
   				 * 我们可以基于这些抽样的数据进行数据分析，可以绘制出这些车辆每天的运行轨迹，对于道路的规划起到了很重要的作用，
   				 * 比如，我们抽样出来的数据80%的车辆在早高峰和晚高峰都是基本同样的行车轨迹，然而他们每天途径的路段都会堵车，这时候我们可以根据这些数据对道路进行规划
   				 * 可以根据用户的画像进行多维度的数据分析
@@ -370,7 +371,7 @@ public class RandomExtractCars {
 			}
 		}
 		
-		/*Map<String, Map<String, IntList>> fastutilDateHourExtractMap = 	new HashMap<String, Map<String, IntList>>();
+		Map<String, Map<String, IntList>> fastutilDateHourExtractMap = 	new HashMap<String, Map<String, IntList>>();
 		
 
 		for(Map.Entry<String, Map<String, List<Integer>>> dateHourExtractEntry : dateHourExtractMap.entrySet()) {
@@ -393,7 +394,7 @@ public class RandomExtractCars {
 			}
 			
 			fastutilDateHourExtractMap.put(date, fastutilHourExtractMap);
-		}*/
+		}
 		
 		final Broadcast<Map<String, Map<String, List<Integer>>>> dateHourExtractBroadcast = sc.broadcast(dateHourExtractMap);
 		/**

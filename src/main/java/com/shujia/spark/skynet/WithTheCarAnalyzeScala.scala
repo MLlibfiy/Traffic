@@ -1,8 +1,6 @@
 package com.shujia.spark.skynet
 
 import java.util
-import java.util.{ArrayList, Collections, Comparator, Iterator, List}
-
 import com.shujia.spark.constant.Constants
 import com.shujia.spark.dao.factory.DAOFactory
 import com.shujia.spark.domain.CarTrack
@@ -75,6 +73,8 @@ object WithTheCarAnalyzeScala {
       */
     val trackWithActionTimeRDD = getCarTrack(cameraRDD)
 
+    trackWithActionTimeRDD.foreach(println)
+
     /**
       * 所有车辆轨迹存储在MySQL中，测试只是放入到MySQL   实际情况是在Redis中
       *
@@ -84,18 +84,18 @@ object WithTheCarAnalyzeScala {
       *
       * monitor_id	时间段（actionTime）
       */
-//    trackWithActionTimeRDD.foreachPartition(iterator => {
-//      val carTracks = new util.ArrayList[CarTrack]
-//      while (iterator.hasNext) {
-//        val tuple = iterator.next
-//        val car = tuple._1
-//        val timeAndTack = tuple._2
-//
-//        carTracks.add(new CarTrack(taskId, DateUtils.getTodayDate, car, timeAndTack))
-//      }
-//      val carTrackDAO = DAOFactory.getCarTrackDAO
-//      carTrackDAO.insertBatchCarTrack(carTracks)
-//    })
+    trackWithActionTimeRDD.foreachPartition(iterator => {
+      val carTracks = new util.ArrayList[CarTrack]
+      while (iterator.hasNext) {
+        val tuple = iterator.next
+        val car = tuple._1
+        val timeAndTack = tuple._2
+
+        carTracks.add(new CarTrack(taskId, DateUtils.getTodayDate, car, timeAndTack))
+      }
+      val carTrackDAO = DAOFactory.getCarTrackDAO
+      carTrackDAO.insertBatchCarTrack(carTracks)
+    })
 
 
     /**

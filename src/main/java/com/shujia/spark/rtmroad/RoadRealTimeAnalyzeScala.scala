@@ -1,7 +1,6 @@
 package com.shujia.spark.rtmroad
 
 import java.text.SimpleDateFormat
-import java.util
 import java.util.{Calendar, List}
 
 import com.shujia.spark.conf.ConfigurationManager

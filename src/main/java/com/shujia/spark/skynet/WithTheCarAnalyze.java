@@ -21,6 +21,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.api.java.function.VoidFunction;
+import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SQLContext;
 
@@ -140,13 +141,11 @@ public class WithTheCarAnalyze {
 			}
 		});
 		
-	/*	List<Tuple2<String, String>> car2Track = trackWithActionTimeRDD.collect();
+		List<Tuple2<String, String>> car2Track = trackWithActionTimeRDD.collect();
 		final Broadcast<List<Tuple2<String, String>>> car2TrackBroadcast = sc.broadcast(car2Track);
 		
 		trackWithActionTimeRDD.mapToPair(new PairFunction<Tuple2<String,String>, String,String>() {
-			*//**
-			 *
-			 *//*
+
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -154,7 +153,7 @@ public class WithTheCarAnalyze {
 				List<Tuple2<String, String>> car2Tracks = car2TrackBroadcast.value();
 				return null;
 			}
-		});*/
+		});
 
 		/**
 		 * 卡口号	时间段（粒度至5分钟）	车牌集合

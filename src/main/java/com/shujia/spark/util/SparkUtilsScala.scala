@@ -1,14 +1,17 @@
 package com.shujia.spark.util
 
+import java.util
+import java.util.Arrays
+
 import com.shujia.spark.conf.ConfigurationManager
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.sql.hive.HiveContext
 import com.alibaba.fastjson.JSONObject
 import com.shujia.spark.constant.Constants
 import com.spark.spark.test.MockData
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.types.{DataTypes, StructType}
 
 
 /**
@@ -36,8 +39,9 @@ object SparkUtilsScala {
     */
   def getSQLContext(sc: SparkContext): SQLContext = {
     val local = ConfigurationManager.getBoolean(Constants.SPARK_LOCAL)
-    if (local) new HiveContext(sc)
-    else new HiveContext(sc)
+    if (local){
+      new HiveContext(sc)
+    } else new HiveContext(sc)
   }
 
   /**
@@ -54,7 +58,43 @@ object SparkUtilsScala {
       * 如何local为true  说明在本地测试  应该生产模拟数据    RDD-》DataFrame-->注册成临时表0
       * false    HiveContext  直接可以操作hive表
       */
-    if (local) MockData.mock(sc, sqlContext)
+    if (local) {
+      val monitorFlowActionRDD = sc.textFile("E:\\第一期\\大数据\\spark\\项目\\Traffic\\data\\monitor_flow_action")
+
+      val monitorFlowActionRowRDD = monitorFlowActionRDD
+        .map(_.split("\t"))
+        .map(x => Row(x(0), x(1), x(2), x(3), x(4), x(5), x(6), x(7)))
+
+      val cameraFlow = util.Arrays.asList(
+        DataTypes.createStructField("date", DataTypes.StringType, true),
+        DataTypes.createStructField("monitor_id", DataTypes.StringType, true),
+        DataTypes.createStructField("camera_id", DataTypes.StringType, true),
+        DataTypes.createStructField("car", DataTypes.StringType, true),
+        DataTypes.createStructField("action_time", DataTypes.StringType, true),
+        DataTypes.createStructField("speed", DataTypes.StringType, true),
+        DataTypes.createStructField("road_id", DataTypes.StringType, true),
+        DataTypes.createStructField("area_id", DataTypes.StringType, true))
+
+      val cameraFlowSchema = DataTypes.createStructType(cameraFlow)
+
+      val monitorFlowActionDF = sqlContext.createDataFrame(monitorFlowActionRowRDD, cameraFlowSchema)
+      monitorFlowActionDF.show()
+      monitorFlowActionDF.registerTempTable("monitor_flow_action")
+
+
+      val monitorCameraInfoRDD = sc.textFile("E:\\第一期\\大数据\\spark\\项目\\Traffic\\data\\monitor_camera_info")
+      val monitorCameraInfoRowRDD = monitorCameraInfoRDD
+        .map(_.split("\t"))
+        .map(x => Row(x(0), x(1)))
+      val monitorSchema = DataTypes.createStructType(util.Arrays.asList(
+        DataTypes.createStructField("monitor_id", DataTypes.StringType, true),
+        DataTypes.createStructField("camera_id", DataTypes.StringType, true)))
+
+      val monitorCameraInfoDF = sqlContext.createDataFrame(monitorCameraInfoRowRDD, monitorSchema)
+      monitorCameraInfoDF.show()
+      monitorCameraInfoDF.registerTempTable("monitor_camera_info")
+
+    }
   }
 
   /**
@@ -66,7 +106,7 @@ object SparkUtilsScala {
   def getCameraRDDByDateRange(sqlContext: SQLContext, taskParamsJsonObject: JSONObject): RDD[Row] = {
     val startDate = ParamUtils.getParam(taskParamsJsonObject, Constants.PARAM_START_DATE)
     val endDate = ParamUtils.getParam(taskParamsJsonObject, Constants.PARAM_END_DATE)
-    val sql = "SELECT * " + "FROM monitor_flow_action " + "WHERE date>='" + startDate + "' " + "AND date<='" + endDate + "'"
+    val sql = "SELECT * FROM monitor_flow_action " + "WHERE date>='" + startDate + "' " + "AND date<='" + endDate + "'"
     val monitorDF = sqlContext.sql(sql)
 
     /**
@@ -80,6 +120,7 @@ object SparkUtilsScala {
     val startDate = ParamUtils.getParam(taskParamsJsonObject, Constants.PARAM_START_DATE)
     val endDate = ParamUtils.getParam(taskParamsJsonObject, Constants.PARAM_END_DATE)
     val cars = ParamUtils.getParam(taskParamsJsonObject, Constants.FIELD_CARS)
+    println(startDate + "\t" + endDate)
     val carArr = cars.split(",")
     var sql = "SELECT * " + "FROM monitor_flow_action " + "WHERE date>='" + startDate + "' " + "AND date<='" + endDate + "' " + "AND car IN ("
     var i = 0
@@ -90,7 +131,8 @@ object SparkUtilsScala {
       if (i < carArr.length - 1) sql += ","
 
       {
-        i += 1; i - 1
+        i += 1;
+        i - 1
       }
     }
     sql += ")"
