@@ -73,7 +73,7 @@ object AreaTop3RoadFlowAnalyzeScala {
     /**
       * 获取指定日期内的参数
       * 根据task 里面的参数过滤数据
-      * monitor_id  car   road_id	area_id
+      * areaId（ monitor_id  car   road_id	area_id）
       */
     val areaId2DetailInfos = getInfosByDateRDD(sqlContext, taskParam)
     /**
@@ -139,7 +139,9 @@ object AreaTop3RoadFlowAnalyzeScala {
         "WHERE rn <=3"
     val df = sqlContext.sql(sql)
     df.show()
-    df.rdd
+    val rwultRDD = df.rdd
+    rwultRDD.foreach(println)
+    rwultRDD
   }
 
   def generateTempAreaRoadFlowTable(sqlContext: SQLContext): Unit = {
@@ -172,6 +174,7 @@ tmp_car_flow_basic表结构
       "group_concat_distinct(monitor_id) monitor_infos " +
       "FROM tmp_car_flow_basic " +
       "GROUP BY area_id,road_id"
+
     val sqlText = "" +
       "SELECT " +
       "area_name_road_id," +
@@ -201,7 +204,7 @@ tmp_car_flow_basic表结构
     //    sqlContext.sql(sqlText).show()
 
     val df = sqlContext.sql(sql)
-    df.show()
+
     df.registerTempTable("tmp_area_road_flow_count")
   }
 

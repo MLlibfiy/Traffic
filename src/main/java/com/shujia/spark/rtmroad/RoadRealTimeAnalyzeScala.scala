@@ -72,9 +72,14 @@ object RoadRealTimeAnalyzeScala {
   def controlCars(path: String, carRealTimeLogDStream: InputDStream[(String, String)]) : DStream[String] = {
 
     carRealTimeLogDStream.transform(rdd=>{
+      //动态修改广播变量的值
       val carList = Source.fromFile(path).getLines().toList
       val broadcast = rdd.context.broadcast(carList)
+
+      //实际生产过程是连接数据库获取车牌号列表
+
       rdd.filter(x=>{
+
         val log: String = x._2
         val car: String = log.split("\t")(3)
         val value = broadcast.value
@@ -108,6 +113,7 @@ object RoadRealTimeAnalyzeScala {
         * 2、如果你的application还有其他的功能点的话，另外一个功能点不能忍受这个长的延迟。权衡一下还是使用reduceByKeyAndWindow。
         */
       .reduceByKeyAndWindow(count, sub, Durations.minutes(1), Durations.seconds(10))
+
       .foreachRDD(rdd => {
         rdd.foreachPartition(x => {
           val secondFormate = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss")
@@ -124,7 +130,10 @@ object RoadRealTimeAnalyzeScala {
               ",平均数度：" + meanSpeed
             )
           }
+
+          //实际上需要写入mysql
         })
+
 
       })
 

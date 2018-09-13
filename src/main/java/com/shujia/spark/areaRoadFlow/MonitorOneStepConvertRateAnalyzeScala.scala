@@ -27,11 +27,12 @@ import scala.collection.JavaConversions._
 object MonitorOneStepConvertRateAnalyzeScala {
   def main(args: Array[String]): Unit = { // 1、构造Spark上下文
     val conf = new SparkConf().setAppName(Constants.SPARK_APP_NAME_SESSION)
-    SparkUtils.setMaster(conf)
+    SparkUtilsScala.setMaster(conf)
     val sc = new SparkContext(conf)
     val sqlContext = SparkUtilsScala.getSQLContext(sc)
     // 2、生成模拟数据
     SparkUtilsScala.mockData(sc, sqlContext)
+
     // 3、查询任务，获取任务的参数
     val taskid = ParamUtils.getTaskIdFromArgs(args, Constants.SPARK_LOCAL_TASKID_MONITOR_ONE_STEP_CONVERT)
     val taskDAO = DAOFactory.getTaskDAO
@@ -40,8 +41,11 @@ object MonitorOneStepConvertRateAnalyzeScala {
     val taskParam = JSON.parseObject(task.getTaskParams)
     /**
       * 从数据库中查找出来我们指定的卡扣流
+      *
       */
+    //0001,0002,0003,0004,0005
     val roadFlow = ParamUtils.getParam(taskParam, Constants.PARAM_MONITOR_FLOW)
+
     val roadFlowBroadcast = sc.broadcast(roadFlow)
     /**
       * 通过时间的范围拿到合法的车辆
@@ -94,7 +98,7 @@ object MonitorOneStepConvertRateAnalyzeScala {
     }
   }
 
-  private def getRoadFlowCount(roadSplitRDD: RDD[(String, Long)])  = {
+  private def getRoadFlowCount(roadSplitRDD: RDD[(String, Long)]) = {
     val sumByKey = roadSplitRDD.reduceByKey(_ + _).collectAsMap()
     sumByKey.toMap
   }
@@ -113,15 +117,15 @@ object MonitorOneStepConvertRateAnalyzeScala {
       val tmpRoadFlow = split.take(i + 1).mkString(",")
       val count = roadFlow2Count(tmpRoadFlow)
 
-        /**
-          * 1_2
-          * lastMonitorCarCount      1 count
-          */
-        if (i != 0 && lastMonitorCarCount != 0L) {
-          val rate = NumberUtils.formatDouble(count.toDouble / lastMonitorCarCount.toDouble, 2)
-          rateMap.put(tmpRoadFlow, rate)
-        }
-        lastMonitorCarCount = count
+      /**
+        * 1_2
+        * lastMonitorCarCount      1 count
+        */
+      if (i != 0 && lastMonitorCarCount != 0L) {
+        val rate = NumberUtils.formatDouble(count.toDouble / lastMonitorCarCount.toDouble, 2)
+        rateMap.put(tmpRoadFlow, rate)
+      }
+      lastMonitorCarCount = count
     }
     rateMap.toMap
   }
@@ -137,9 +141,9 @@ object MonitorOneStepConvertRateAnalyzeScala {
     * @param car2RowRDD
     * @return
     */
-  private def generateAndMatchRowSplit(taskParam: JSONObject, roadFlowBroadcast: Broadcast[String], car2RowRDD: RDD[(String, Row)]) = {
+  private def generateAndMatchRowSplit(taskParam: JSONObject, roadFlowBroadcast: Broadcast[String], car2RowRDD: RDD[(String, Row)]):RDD[(String,Long)] = {
 
-    car2RowRDD.groupByKey.flatMap(tuple => {
+    val resultRDD = car2RowRDD.groupByKey.flatMap(tuple => {
 
       /**
         * 对这个rows集合 按照车辆通过卡扣的时间排序
@@ -169,10 +173,11 @@ object MonitorOneStepConvertRateAnalyzeScala {
         * 1,2,3，4,5
         * 1 2 3 4 5
         * 遍历分割完成的数组
+        * 0001,0002,0003,0004,0005
         */
       val resultList = new java.util.ArrayList[(String, Long)]
       for (i <- 0 until split.length) {
-        var tmpRoadFlow = split.take(i+1).mkString(",")
+        var tmpRoadFlow = split.take(i + 1).mkString(",")
         //indexOf 从哪个位置开始查找
         var index = 0
         //这辆车有多少次匹配到这个卡扣切片的次数
@@ -188,5 +193,7 @@ object MonitorOneStepConvertRateAnalyzeScala {
       import scala.collection.JavaConversions._
       resultList
     })
+
+    resultRDD
   }
 }

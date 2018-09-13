@@ -34,6 +34,8 @@ public class DateUtils {
                 return true;
             }
         } catch (Exception e) {
+            System.out.println(time1);
+            System.out.println(time2);
             e.printStackTrace();
         }
         return false;

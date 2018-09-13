@@ -42,7 +42,7 @@ object WithTheCarAnalyzeScala {
       * 本地模拟数据注册成一张临时表
       * monitor_flow_action
       */
-    SparkUtilsScala.mockData(sc, sqlContext)
+    SparkUtils.mockData(sc, sqlContext)
     //从配置文件中查询出来指定的任务ID
     val taskId = ParamUtils.getTaskIdFromArgs(args, Constants.SPARK_LOCAL_WITH_THE_CAR)
     /**
@@ -73,7 +73,7 @@ object WithTheCarAnalyzeScala {
       */
     val trackWithActionTimeRDD = getCarTrack(cameraRDD)
 
-    trackWithActionTimeRDD.foreach(println)
+    //    trackWithActionTimeRDD.foreach(println)
 
     /**
       * 所有车辆轨迹存储在MySQL中，测试只是放入到MySQL   实际情况是在Redis中
@@ -105,22 +105,33 @@ object WithTheCarAnalyzeScala {
       * 按照卡口进行聚合
       */
 
+    val resultList = new util.ArrayList[String]
+
     cameraRDD.map(row => (row.getString(1), row))
       .groupByKey()
       .foreach(tuple => {
         val monitor = tuple._1
-        val rowIterator = tuple._2.iterator
-        val rows = new util.ArrayList[Row]
-        while ( {
-          rowIterator.hasNext
-        }) {
-          val row = rowIterator.next
-          rows.add(row)
+        val rowList = tuple._2.iterator.toList
+
+        for (i <- rowList.indices) {
+          val oneActionTime = rowList(i).getString(4)
+          for (j <- i + 1 until rowList.length) {
+            val twoActionTime = rowList(j).getString(4)
+            val second = DateUtils.minus(oneActionTime, twoActionTime)
+            print(rowList(i).getString(3))
+            if (second < 300) {
+              val str = monitor + "\t" + rowList(i).getString(3) + ":" + oneActionTime + "\t" + rowList(j).getString(3) + ":" + twoActionTime
+              resultList.add(str)
+              print(str)
+            }
+          }
         }
       })
+    import scala.collection.JavaConversions._
+    resultList.toList.foreach(println)
   }
 
-  def getCarTrack(cameraRDD: RDD[Row]):RDD[(String,String)] = {
+  def getCarTrack(cameraRDD: RDD[Row]): RDD[(String, String)] = {
 
     val resuRDD = cameraRDD.map(row => (row.getString(3), row))
       .groupByKey()
@@ -128,11 +139,11 @@ object WithTheCarAnalyzeScala {
         val iterator = tuple._2.iterator
         val car = tuple._1
 
-        val trackWithTime = iterator.toList.sortWith((r1,r2)=>{
+        val trackWithTime = iterator.toList.sortWith((r1, r2) => {
           val actionTime1 = r1.getString(4)
           val actionTime2 = r2.getString(4)
           DateUtils.before(actionTime1, actionTime2)
-        }).map(row=>row.getString(1)+"="+row.getString(4)).mkString("|")
+        }).map(row => row.getString(1) + "=" + row.getString(4)).mkString("|")
 
         (car, trackWithTime)
       })

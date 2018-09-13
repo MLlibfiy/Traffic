@@ -15,7 +15,7 @@ public class MockRealTimeData extends Thread {
 	private static final Random random = new Random();
 	private static final String[] locations = new String[]{"鲁","京","京","京","沪","京","京","深","京","京"};
 	private Producer<Integer, String> producer;
-	private String topic = "RoadRealTimeLog";
+	private String topic = "RoadRealTimeLog1";
 	
 	public MockRealTimeData() {
 		producer = new Producer<Integer, String>(createProducerConfig());  

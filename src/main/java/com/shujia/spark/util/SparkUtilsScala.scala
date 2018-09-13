@@ -27,7 +27,7 @@ object SparkUtilsScala {
     */
   def setMaster(conf: SparkConf): Unit = {
     val local = ConfigurationManager.getBoolean(Constants.SPARK_LOCAL)
-    if (local) conf.setMaster("local")
+    if (local) conf.setMaster("local[1]")
   }
 
   /**
@@ -121,22 +121,11 @@ object SparkUtilsScala {
     val endDate = ParamUtils.getParam(taskParamsJsonObject, Constants.PARAM_END_DATE)
     val cars = ParamUtils.getParam(taskParamsJsonObject, Constants.FIELD_CARS)
     println(startDate + "\t" + endDate)
-    val carArr = cars.split(",")
-    var sql = "SELECT * " + "FROM monitor_flow_action " + "WHERE date>='" + startDate + "' " + "AND date<='" + endDate + "' " + "AND car IN ("
-    var i = 0
-    while ( {
-      i < carArr.length
-    }) {
-      sql += "'" + carArr(i) + "'"
-      if (i < carArr.length - 1) sql += ","
-
-      {
-        i += 1;
-        i - 1
-      }
-    }
-    sql += ")"
-    System.out.println("sql:" + sql)
+    var sql = "SELECT * " + "FROM monitor_flow_action " + "WHERE" +
+      " date>='" + startDate + "' " +
+      "AND date<='" + endDate + "' " +
+      "AND car IN ('"+cars.split(",").mkString("','")+"')"
+    println("sql:" + sql)
     val monitorDF = sqlContext.sql(sql)
     monitorDF.rdd
   }

@@ -1,16 +1,10 @@
 package com.spark.spark.test;
-
 import com.shujia.spark.util.DateUtils;
 import com.shujia.spark.util.StringUtils;
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.sql.DataFrame;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RowFactory;
-import org.apache.spark.sql.SQLContext;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructType;
+import scala.collection.Iterator;
+import scala.io.Source;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -39,13 +33,9 @@ public class MockDataToDisk {
         String date = DateUtils.getTodayDate();
 
 //    	StringBuilder carStringBuilder = new StringBuilder();
-
-        for (int i = 0; i < 3000; i++) {
-            String car = locations[random.nextInt(10)] + (char) (65 + random.nextInt(26)) + StringUtils.fulfuill(5, random.nextInt(99999) + "");
-
-//        	if(i % 100 == 0){
-//        		carStringBuilder.append(","+car);
-//        	}
+        Iterator<String> cars = Source.fromFile("E:\\第一期\\大数据\\spark\\项目\\Traffic\\data\\cars.txt", "utf-8").getLines();
+        while(cars.hasNext()){
+            String car = cars.next();
             String baseActionTime = date + " " + StringUtils.fulfuill(random.nextInt(24) + "");
             for (int j = 0; j < random.nextInt(300); j++) {
                 if (j % 30 == 0 && j != 0) {
@@ -62,7 +52,6 @@ public class MockDataToDisk {
                 dataList.add(row);
             }
         }
-
         sc.parallelize(dataList).saveAsTextFile("E:\\第一期\\大数据\\spark\\项目\\Traffic\\data\\monitor_flow_action");
 
 
