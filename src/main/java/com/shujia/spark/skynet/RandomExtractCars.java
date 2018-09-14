@@ -113,6 +113,7 @@ public class RandomExtractCars {
   				 * 比如，我们抽样出来的数据80%的车辆在早高峰和晚高峰都是基本同样的行车轨迹，然而他们每天途径的路段都会堵车，这时候我们可以根据这些数据对道路进行规划
   				 * 可以根据用户的画像进行多维度的数据分析
   				 */
+
   				JavaPairRDD<String, Row> randomExtractCar2DetailRDD = randomExtractCarInfo(sc,taskId,taskParamsJsonObject,cameraRDD);
   				
   				/**
@@ -372,7 +373,7 @@ public class RandomExtractCars {
 		}
 		
 		Map<String, Map<String, IntList>> fastutilDateHourExtractMap = 	new HashMap<String, Map<String, IntList>>();
-		
+
 
 		for(Map.Entry<String, Map<String, List<Integer>>> dateHourExtractEntry : dateHourExtractMap.entrySet()) {
 			String date = dateHourExtractEntry.getKey();
@@ -421,12 +422,17 @@ public class RandomExtractCars {
 				 String hour = dateHour.split("_")[1];
 				
 				IRandomExtractDAO randomExtractDAO = DAOFactory.getRandomExtractDAO();
+
 				 
 				 Map<String, Map<String, List<Integer>>> dateHourExtractMap = dateHourExtractBroadcast.value();
+
 				 List<Integer> indexList = dateHourExtractMap.get(date).get(hour);
+
 				 int index = 0;
 				 while(iterator.hasNext()){
+
 					 String car = StringUtils.getFieldFromConcatString(iterator.next(), "\\|", Constants.FIELD_CAR);
+
 					 if(indexList.contains(index)){
 						 RandomExtractCar carRandomExtract = new RandomExtractCar(taskId, car, date, dateHour);
 						 carRandomExtracts.add(carRandomExtract);

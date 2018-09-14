@@ -241,8 +241,8 @@ public class JDBCHelper {
 			conn = getConnection();
 			
 			// 第一步：使用Connection对象，取消自动提交
-			conn.setAutoCommit(false);  
-			
+			conn.setAutoCommit(false);
+
 			pstmt = conn.prepareStatement(sql);
 			
 			// 第二步：使用PreparedStatement.addBatch()方法加入批量的SQL参数

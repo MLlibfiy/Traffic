@@ -117,16 +117,15 @@ object SparkUtilsScala {
   }
 
   def getCameraRDDByDateRangeAndCars(sqlContext: SQLContext, taskParamsJsonObject: JSONObject): RDD[Row] = {
-    val startDate = ParamUtils.getParam(taskParamsJsonObject, Constants.PARAM_START_DATE)
-    val endDate = ParamUtils.getParam(taskParamsJsonObject, Constants.PARAM_END_DATE)
-    val cars = ParamUtils.getParam(taskParamsJsonObject, Constants.FIELD_CARS)
-    println(startDate + "\t" + endDate)
-    var sql = "SELECT * " + "FROM monitor_flow_action " + "WHERE" +
+    val startDate: String = ParamUtils.getParam(taskParamsJsonObject, Constants.PARAM_START_DATE)
+    val endDate: String = ParamUtils.getParam(taskParamsJsonObject, Constants.PARAM_END_DATE)
+    val cars: String = ParamUtils.getParam(taskParamsJsonObject, Constants.FIELD_CARS)
+    var sql: String = "SELECT * " + "FROM monitor_flow_action " + "WHERE" +
       " date>='" + startDate + "' " +
       "AND date<='" + endDate + "' " +
       "AND car IN ('"+cars.split(",").mkString("','")+"')"
     println("sql:" + sql)
-    val monitorDF = sqlContext.sql(sql)
+    val monitorDF: DataFrame = sqlContext.sql(sql)
     monitorDF.rdd
   }
 }

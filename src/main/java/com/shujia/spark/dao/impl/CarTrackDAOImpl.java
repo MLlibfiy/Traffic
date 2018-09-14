@@ -35,6 +35,7 @@ public class CarTrackDAOImpl implements ICarTrackDAO {
 			 Map<String, String> timeAndMonitor = StringUtils.getKeyValuesFromConcatString(track, "\\|");
 			 List<CarInfoPer5M> insertList = new ArrayList<>();
 			 List<CarInfoPer5M> updateList = new ArrayList<>();
+
 			 for (Entry<String, String> entry : timeAndMonitor.entrySet()) {
 				 String monitorId = entry.getKey();
 				 String dateTime = entry.getValue();
