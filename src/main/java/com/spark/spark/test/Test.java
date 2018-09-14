@@ -20,10 +20,7 @@ import java.util.Random;
 public class Test {
 
     public static void main(String args[]){
-        Iterator<String> lines = Source.fromFile("E:\\第一期\\大数据\\spark\\项目\\Traffic\\data\\cars.txt", "utf-8").getLines();
-        while(lines.hasNext()){
-            System.out.println(lines.next());
-        }
+
 
     }
 }
