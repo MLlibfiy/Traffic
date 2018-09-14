@@ -41,7 +41,9 @@ import scala.Tuple2;
 
 /**
  * 卡口流量监控模块
- * 1、卡口数量的正常数量，异常数量，还有通道数同时查询出车流量排名前N的卡口  持久化到数据库中
+ * 1、卡口数量的正常数量，异常数量，
+ *
+ * 还有通道数同时查询出车流量排名前N的卡口  持久化到数据库中
  * 2、根据指定的卡口号和查询日期查询出此时的卡口的流量信息
  * 3、基于2功能点的基础上多维度搜车，通过车牌颜色，车辆类型，车辆颜色，车辆品牌，车辆型号，车辆年款信息进行多维度搜索，这个功能点里面会使用到异构数据源。
  *
@@ -374,7 +376,11 @@ public class MonitorFlowAnalyze {
                  */
                 int cameraCount = list.size();
 
-                String infos = Constants.FIELD_MONITOR_ID + "=" + monitorId + "|" + Constants.FIELD_AREA_ID + "=" + areaId + "|" + Constants.FIELD_CAMERA_IDS + "=" + tmpInfos.toString().substring(1) + "|" + Constants.FIELD_CAMERA_COUNT + "=" + cameraCount + "|" + Constants.FIELD_CAR_COUNT + "=" + count;
+                String infos = Constants.FIELD_MONITOR_ID + "=" + monitorId + "|" +
+                        Constants.FIELD_AREA_ID + "=" + areaId + "|" +
+                        Constants.FIELD_CAMERA_IDS + "=" + tmpInfos.toString().substring(1) + "|" +
+                        Constants.FIELD_CAMERA_COUNT + "=" + cameraCount + "|"
+                        + Constants.FIELD_CAR_COUNT + "=" + count;
                 return new Tuple2<String, String>(monitorId, infos);
             }
         });
@@ -548,7 +554,8 @@ public class MonitorFlowAnalyze {
                     cameraIds.append("," + cameraIterator.next());
                     count++;
                 }
-                String cameraInfos = Constants.FIELD_CAMERA_IDS + "=" + cameraIds.toString().substring(1) + "|" + Constants.FIELD_CAMERA_COUNT + "=" + count;
+                String cameraInfos = Constants.FIELD_CAMERA_IDS + "=" + cameraIds.toString().substring(1) + "|" +
+                        Constants.FIELD_CAMERA_COUNT + "=" + count;
                 return new Tuple2<String, String>(monitorId, cameraInfos);
             }
         });
@@ -614,7 +621,10 @@ public class MonitorFlowAnalyze {
                             }
                         }
                         normalCameraCount = standardCameraIdList.size() - abnormalCmeraCount;
-                        monitorAndCameraStateAccumulator.add(Constants.FIELD_NORMAL_CAMERA_COUNT + "=" + normalCameraCount + "|" + Constants.FIELD_ABNORMAL_MONITOR_COUNT + "=1|" + Constants.FIELD_ABNORMAL_CAMERA_COUNT + "=" + abnormalCmeraCount + "|" + Constants.FIELD_ABNORMAL_MONITOR_CAMERA_INFOS + "=" + monitorId + ":" + abnormalCameraInfos.toString().substring(1));
+                        monitorAndCameraStateAccumulator.add(Constants.FIELD_NORMAL_CAMERA_COUNT + "=" + normalCameraCount + "|" +
+                                Constants.FIELD_ABNORMAL_MONITOR_COUNT + "=1|" +
+                                Constants.FIELD_ABNORMAL_CAMERA_COUNT + "=" + abnormalCmeraCount + "|" +
+                                Constants.FIELD_ABNORMAL_MONITOR_CAMERA_INFOS + "=" + monitorId + ":" + abnormalCameraInfos.toString().substring(1));
                     }
 
                     int carCount = Integer.parseInt(StringUtils.getFieldFromConcatString(factCameraInfos, "\\|", Constants.FIELD_CAR_COUNT));
