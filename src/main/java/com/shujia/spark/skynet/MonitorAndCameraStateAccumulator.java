@@ -51,7 +51,11 @@ public class MonitorAndCameraStateAccumulator implements AccumulatorParam<String
 			String oldVal = StringUtils.getFieldFromConcatString(v1, "\\|", field);
 			if(oldVal != null){
 				if(Constants.FIELD_ABNORMAL_MONITOR_CAMERA_INFOS.equals(field)){
-					v1 = StringUtils.setFieldInConcatString(v1, "\\|", field, oldVal + "~" + value); 
+					if(oldVal.equals(" ")){
+						v1 = StringUtils.setFieldInConcatString(v1, "\\|", field,  value);
+					}else{
+						v1 = StringUtils.setFieldInConcatString(v1, "\\|", field, oldVal + "~" + value);
+					}
 				}else{
 					int newVal = Integer.parseInt(oldVal)+Integer.parseInt(value);
 					v1 = StringUtils.setFieldInConcatString(v1, "\\|", field, String.valueOf(newVal));  
