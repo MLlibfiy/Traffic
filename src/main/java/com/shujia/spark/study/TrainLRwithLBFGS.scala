@@ -30,7 +30,7 @@ object TrainLRwithLBFGS {
 
     // fetch data from redis
     val jedis: Jedis = RedisClient.pool.getResource
-    jedis.select(3)
+    jedis.select(5)
 
     // find relative road monitors for specified road
     // val camera_ids = List("310999003001","310999003102","310999000106","310999000205","310999007204")
@@ -42,16 +42,16 @@ object TrainLRwithLBFGS {
     )
 
     val temp: List[Any] = camera_ids.map({ camera_id =>
-      val hours = 3
+      val hours = 6
+      //拿到当前时间戳
       val nowtimelong: Long = System.currentTimeMillis()
       val now = new Date(nowtimelong)
       //            val day = dayFormat.format(now)
-      val day = "20180916"
+      val day = "20180917"
       // Option Some None
       val list = camera_relations(camera_id)
 
       val relations: Array[(String, util.Map[String, String])] = list.map({ camera_id =>
-        println(camera_id)
         // fetch records of one camera for three hours ago
         (camera_id, jedis.hgetAll(day + "_" + camera_id))
 
@@ -103,10 +103,9 @@ object TrainLRwithLBFGS {
         }
       }
       trainSet.foreach(println)
-      println(trainSet.length)
 
+      //z转换成RDD
       val data: RDD[LabeledPoint] = sc.parallelize(trainSet)
-      println(data)
 
       // Split data into training (60%) and test (40%).
       val splits: Array[RDD[LabeledPoint]] = data.randomSplit(Array(0.6, 0.4), seed = 1000L)
@@ -115,13 +114,15 @@ object TrainLRwithLBFGS {
 
       if (!data.isEmpty()) {
 
-        // Run training algorithm to build the model
+        // 构建逻辑回归算法模型
         val model: LogisticRegressionModel = new LogisticRegressionWithLBFGS()
+          //设置逻辑回归分类的数量
           .setNumClasses(11)
-          .run(data)
+          //训练模型
+          .run(training)
 
         // Compute raw scores on the test set.
-        val predictionAndLabels: RDD[(Double, Double)] = training.map { case LabeledPoint(label, features) =>
+        val predictionAndLabels: RDD[(Double, Double)] = test.map { case LabeledPoint(label, features) =>
           val prediction: Double = model.predict(features)
           (prediction, label)
         }
@@ -133,6 +134,7 @@ object TrainLRwithLBFGS {
         val precision: Double = metrics.precision
         println("Precision = " + precision)
 
+        //判断准确率是否大于0.8
         if (precision > 0.8) {
           val path: String = "E:\\第一期\\大数据\\spark\\项目\\Traffic\\out\\model_" + camera_id + "_" + nowtimelong
           model.save(sc, path)
