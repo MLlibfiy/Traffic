@@ -1,14 +1,16 @@
 package com.shujia.spark.study
 
 import java.text.SimpleDateFormat
-import java.util.Calendar
+import java.util.{Calendar, Date}
 
 import com.google.gson.Gson
 import kafka.serializer.StringDecoder
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming._
+import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.kafka._
 import org.json.JSONObject
+import redis.clients.jedis.Jedis
 
 object CarEventCountAnalytics {
 
@@ -18,84 +20,56 @@ object CarEventCountAnalytics {
       masterUrl = args(0)
     }
 
-    val conf = new SparkConf().setMaster(masterUrl).setAppName("UserClickCountStat")
+    val conf: SparkConf = new SparkConf().setMaster(masterUrl).setAppName("UserClickCountStat")
     val ssc = new StreamingContext(conf, Seconds(5))
     //ssc.checkpoint(".")
 
 
     val topics = Set("car_events")
-    val brokers = "1node1:9092,node2:9092,node3:9092"
+    val brokers = "node1:9092,node2:9092,node3:9092"
 
     val kafkaParams = Map(
       "metadata.broker.list" -> brokers,
       "serializer.class" -> "kafka.serializer.StringEncoder"
     )
 
-    val dbIndex = 2
+    val dbIndex = 3
 
-    val kafkaStream = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParams, topics)
+    val kafkaStream: InputDStream[(String, String)] = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParams, topics)
 
-    //  val kafkaStream = KafkaUtils.createDirectStream(ssc, kafkaParams, fromOffsets, messageHandler)
 
-    val events = kafkaStream.flatMap(line => {
-      val data = new JSONObject(line._2)
-//      println(data)
-      Some(data)
-    })
-      .filter(x => x.getString("car_id").matches("[0-9A-Z].*"))
+    val linesRDD: DStream[Array[String]] = kafkaStream.map(line => line._2.split("\t"))
 
-    // Compute car average speed for every camera
-
-    // val dateString = (input:String) => {input.substring(1,14)}
-    // dateString(x.getString("event_time")) + "_" + x.getString("road_id")
-    // val ff = (a:Tuple2[Int,Int], b:Tuple2[Int,Int]) => {(a._1 + b._1, a._2 + b._2)};
-
-    // (Some(data)) --> (camera_id, speed)
-    val carSpeed = events.map(x => (x.getString("camera_id"), x.getInt("speed")))
-      //    val carSpeed = events.map(x => x.getString("road_id") -> (x.getInt("speed"),1))
-      //            .reduceByKey((a, b) => {(a._1 + b._1, a._2 + b._2)})
+    val carSpeed: DStream[(String, (Int, Int))] = linesRDD.map(x => (x(0), x(3).toInt))
       .mapValues((x: Int) => (x, 1))
-      //            .reduceByKeyAndWindow((a, b) => {(a._1 + b._1, a._2 + b._2)},Seconds(10))
-
-      // (camera_id,(speed,1))
       .reduceByKeyAndWindow((a: (Int, Int), b: (Int, Int)) => {
-      (a._1 + b._1, a._2 + b._2)
-    }, Seconds(20), Seconds(10))
-
-    //    carSpeed.map{ case (key, value) => (key, value._1 / value._2.toFloat) }
+        (a._1 + b._1, a._2 + b._2)
+      }, Seconds(20), Seconds(10))
 
     carSpeed.foreachRDD(rdd => {
 
       rdd.foreachPartition(partitionOfRecords => {
-        val jedis = RedisClient.pool.getResource
-        // (camera_id,(speed,1))
+        val jedis: Jedis = RedisClient.pool.getResource
         partitionOfRecords.foreach(pair => {
-          val camera_id = pair._1
-          val total = pair._2._1
-          val count = pair._2._2
-          val now = Calendar.getInstance().getTime
-          // create the date/time formatters
+          val camera_id: String = pair._1
+          val total: Int = pair._2._1
+          val count: Int = pair._2._2
+          val now: Date = Calendar.getInstance().getTime
           val minuteFormat = new SimpleDateFormat("HHmm")
           val dayFormat = new SimpleDateFormat("yyyyMMdd")
-          val time = minuteFormat.format(now)
-          val day = dayFormat.format(now)
+          val time: String = minuteFormat.format(now)
+          val day: String = dayFormat.format(now)
           if (count != 0) {
-            // val averageSpeed = total / count
             jedis.select(dbIndex)
+            println(camera_id)
             jedis.hset(day + "_" + camera_id, time, total + "_" + count)
-            println(time)
-            //             fetch data from redis
-            val temp = jedis.hget(day + "_" + camera_id, time)
-//            println(temp)
           }
         })
         RedisClient.pool.returnResource(jedis)
       })
 
     })
-
-    println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-
+    println("=" * 20)
     ssc.start()
     ssc.awaitTermination()
 
