@@ -27,7 +27,7 @@ object SparkUtilsScala {
     */
   def setMaster(conf: SparkConf): Unit = {
     val local = ConfigurationManager.getBoolean(Constants.SPARK_LOCAL)
-    if (local) conf.setMaster("local[1]")
+    if (local) conf.setMaster("local[3]")
   }
 
   /**

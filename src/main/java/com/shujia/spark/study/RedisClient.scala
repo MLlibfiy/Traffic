@@ -7,6 +7,8 @@ object RedisClient extends Serializable {
   val redisHost = "node3"
   val redisPort = 6379
   val redisTimeout = 30000
+  //redis链接池
+  //lazy 懒执行，用到的时候才会执行
   lazy val pool = new JedisPool(new GenericObjectPoolConfig(), redisHost, redisPort, redisTimeout)
 
   lazy val hook: Thread = new Thread {
@@ -15,5 +17,6 @@ object RedisClient extends Serializable {
       pool.destroy()
     }
   }
+  //当main方法执行完成之前调用
   sys.addShutdownHook(hook.run)
 }
